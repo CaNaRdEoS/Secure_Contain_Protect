@@ -25,7 +25,7 @@ void movingSprite(Player& player, Rectangle& sprite, int& acceleration)
 
 int main()
 {
-	Player guard(250, 100, 41, 69, 3, "./assets/SCP_Guard_Walking.png");
+	Player guard(250, 100, 41, 69, 3, "./assets/SCP_GuardNoHelmet_Walking.png");
 	InitWindow(500, 200, "SCP : Secure Contain Protect");
 
 	//Traitement de l'image du garde
