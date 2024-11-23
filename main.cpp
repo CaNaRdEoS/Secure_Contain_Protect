@@ -1,133 +1,152 @@
-#include "Player.h"
 #include <iostream>
 #include <raylib.h>
 
-void movingSprite(Player& player, Rectangle& sprite, int& acceleration)
-{
-	acceleration++;
-	if (acceleration < 10)
-	{
-		sprite.x = 0;
-	} else if (acceleration < 20)
-	{
-		sprite.x = player.getW();
-	} else if (acceleration < 30)
-	{
-		sprite.x = player.getW()*2;
-	} else if (acceleration < 40)
-	{
-		sprite.x = player.getW()*3;
-	} else
-	{
-		acceleration = 0;
-	}
+// Structures pour les éléments du jeu
+struct CorridorHorizontal {
+    int x, y;
+    Texture2D texture;
+    Rectangle hitboxNorth, hitboxSouth;
+};
+
+struct DoorHorizontal {
+    int x, y;
+    Texture2D texture;
+    Rectangle hitboxNorth, hitboxDoor, hitboxSouth;
+    bool open;
+};
+
+struct Player {
+    int x, y, w, h, v;
+    Texture2D texture;
+    Rectangle hitbox;
+};
+
+// Création d'un joueur
+void createPlayer(Player& player, float x, float y, const char* file_name) {
+    player.x = x;
+    player.y = y;
+    player.w = 41;
+    player.h = 69;
+    player.v = 3;
+    player.texture = LoadTexture(file_name);
+    player.hitbox = { x + 4.0f, y + 64.0f, 33.0f, 7.0f }; // Bas de la texture pour hitbox
 }
 
-int main()
-{
-	Player guard(250, 100, 41, 69, 3, "./assets/SCP_GuardNoHelmet_Walking.png");
-	InitWindow(500, 200, "SCP : Secure Contain Protect");
+// Création d'un corridor
+void createCorridor(CorridorHorizontal& corridor, float x, float y) {
+    corridor.x = x;
+    corridor.y = y;
+    corridor.texture = LoadTexture("./assets/SCP_Corridor.png");
+    corridor.hitboxNorth = { x, y + 104.0f, 500.0f, 10.0f };
+    corridor.hitboxSouth = { x, y + 172.0f, 500.0f, 10.0f };
+}
 
-	//Traitement de l'image du garde
-	Image guard_img = LoadImage(guard.getT().c_str());
-	Texture2D guard_texture = LoadTextureFromImage(guard_img);
-	UnloadImage(guard_img);
-	Rectangle guard_sprite = {0, 0, 40, 67};
-	Rectangle guard_hitbox = {guard.getX()+4, guard.getY()+guard.getH()-5, guard.getW()-8, 7};
-	int acceleration = 0;
+// Création d'une porte
+void createDoor(DoorHorizontal& door, float x, float y) {
+    door.x = x;
+    door.y = y;
+    door.texture = LoadTexture("./assets/SCP_Door.png");
+    door.hitboxNorth = { x + 17.0f, y + 95.0f, 17.0f, 14.0f };
+    door.hitboxSouth = { x + 17.0f, y + 146.0f, 17.0f, 14.0f };
+    door.hitboxDoor = { x + 17.0f, y + 109.0f, 17.0f, 37.0f };
+    door.open = false;
+}
 
-	//Traitement de l'image du couloir 500 175
-	Image corridor_img = LoadImage("./assets/SCP_Corridor.png");
-	Texture2D corridor_texture = LoadTextureFromImage(corridor_img);
-	Rectangle up_hitbox = {0, 114, 500, 10};
-	Rectangle down_hitbox = {0, 182, 500, 10};
-	Rectangle right_hitbox = {354, 120, 10, 62};
-	Rectangle left_hitbox = {0, 120, 10, 62};
-	UnloadImage(corridor_img);
+// Mise à jour de l'animation du sprite
+void updateSpriteAnimation(Player& player, Rectangle& sprite, int& frameCounter) {
+    frameCounter++;
+    int frame = (frameCounter / 10) % 4; // Cycle entre 0 et 3
+    sprite.x = frame * player.w; // Change la colonne
+    if (frameCounter >= 40) frameCounter = 0; // Réinitialise après un cycle
+}
 
+// Gestion du mouvement du joueur
+void handleMovement(Player& player, Rectangle& sprite, int& frameCounter) {
+    bool isMoving = false;
 
-	SetTargetFPS(60);
+    // Déplacement à droite
+    if (IsKeyDown(KEY_D) || IsKeyDown(KEY_RIGHT)) {
+        player.x += player.v;
+        player.hitbox.x += player.v;
+        sprite.y = 0; // Ligne pour "droite"
+        isMoving = true;
+    }
+    // Déplacement à gauche
+    if (IsKeyDown(KEY_A) || IsKeyDown(KEY_LEFT)) {
+        player.x -= player.v;
+        player.hitbox.x -= player.v;
+        sprite.y = player.h; // Ligne pour "gauche"
+        isMoving = true;
+    }
+    // Déplacement vers le haut
+    if (IsKeyDown(KEY_W) || IsKeyDown(KEY_UP)) {
+        player.y -= player.v;
+        player.hitbox.y -= player.v;
+        sprite.y = player.h * 2; // Ligne pour "haut"
+        isMoving = true;
+    }
+    // Déplacement vers le bas
+    if (IsKeyDown(KEY_S) || IsKeyDown(KEY_DOWN)) {
+        player.y += player.v;
+        player.hitbox.y += player.v;
+        sprite.y = player.h * 3; // Ligne pour "bas"
+        isMoving = true;
+    }
 
-	while (!WindowShouldClose())
-	{
-		if (!IsKeyDown(KEY_A) && !IsKeyDown(KEY_LEFT) && !IsKeyDown(KEY_D) && !IsKeyDown(KEY_RIGHT) && !IsKeyDown(KEY_W) && !IsKeyDown(KEY_UP) && !IsKeyDown(KEY_S) && !IsKeyDown(KEY_DOWN))
-		{
-			acceleration = 0;
-		}
+    // Animation du sprite
+    if (isMoving) {
+        updateSpriteAnimation(player, sprite, frameCounter);
+    } else {
+        frameCounter = 0; // Réinitialise l'animation si immobile
+    }
+}
 
-		if (IsKeyDown(KEY_D)|| IsKeyDown(KEY_RIGHT))
-		{
-			guard_hitbox.x += guard.getV();
-			if (CheckCollisionRecs(guard_hitbox, right_hitbox))
-			{
-				guard_hitbox.x -= guard.getV();
-			} else
-			{
-				guard.moveX(guard.getV());
-				guard_sprite.y = 0;
-				std::cout << guard_sprite.y << std::endl;
-				movingSprite(guard, guard_sprite, acceleration);
-			}
-		}
-		if (IsKeyDown(KEY_A) || IsKeyDown(KEY_LEFT))
-		{
-			guard_hitbox.x -= guard.getV();
-			if (CheckCollisionRecs(guard_hitbox, left_hitbox))
-			{
-				guard_hitbox.x += guard.getV();
-			} else
-			{
-				guard.moveX(-guard.getV());
-				guard_sprite.y = guard.getH();
-				std::cout << guard_sprite.y << std::endl;
-				movingSprite(guard, guard_sprite, acceleration);
-			}
-		}
-		if (IsKeyDown(KEY_W) || IsKeyDown(KEY_UP))
-		{
-			guard_hitbox.y -= guard.getV();
-			if (CheckCollisionRecs(guard_hitbox, up_hitbox))
-			{
-				guard_hitbox.y += guard.getV();
-			} else
-			{
-				guard.moveY(-guard.getV());
-				guard_sprite.y = guard.getH()*2;
-				std::cout << guard_sprite.y << std::endl;
-				movingSprite(guard, guard_sprite, acceleration);
-			}
-		}
-		if (IsKeyDown(KEY_S)|| IsKeyDown(KEY_DOWN))
-		{
-			guard_hitbox.y += guard.getV();
-			if (CheckCollisionRecs(guard_hitbox, down_hitbox))
-			{
-				guard_hitbox.y -= guard.getV();
-			} else
-			{
-				guard.moveY(guard.getV());
-				guard_sprite.y = guard.getH()*3;
-				std::cout << guard_sprite.y << std::endl;
-				movingSprite(guard, guard_sprite, acceleration);
-			}
-		}
+// Fonction principale
+int main() {
+    InitWindow(500, 200, "SCP : Secure Contain Protect");
 
-		//Draw
-		BeginDrawing();
-		ClearBackground(BLACK);
-		DrawTexture(corridor_texture, 0, 10, WHITE);
-		DrawTextureRec(guard_texture, guard_sprite, {guard.getX(), guard.getY()}, WHITE);
+    // Initialisation du joueur
+    Player guard;
+    createPlayer(guard, 150.0f, 100.0f, "./assets/SCP_Guard_Walking.png");
+    Rectangle guardSprite = { 0.0f, 0.0f, static_cast<float>(guard.w), static_cast<float>(guard.h) };
 
-		//Hit boxes
-		//DrawRectangle(guard_hitbox.x, guard_hitbox.y, guard_hitbox.width, guard_hitbox.height, RED);
-		//DrawRectangle(up_hitbox.x, up_hitbox.y, up_hitbox.width, up_hitbox.height, WHITE);
-		//DrawRectangle(down_hitbox.x, down_hitbox.y, down_hitbox.width, down_hitbox.height, WHITE);
-		//DrawRectangle(right_hitbox.x, right_hitbox.y, right_hitbox.width, right_hitbox.height, WHITE);
-		//DrawRectangle(left_hitbox.x, left_hitbox.y, left_hitbox.width, left_hitbox.height, WHITE);
-		EndDrawing();
-	}
-	UnloadTexture(guard_texture);
-	UnloadTexture(corridor_texture);
-	CloseWindow();
-	return 0;
+    // Initialisation du corridor et de la porte
+    CorridorHorizontal corridor1;
+    createCorridor(corridor1, 0.0f, 10.0f);
+    DoorHorizontal door1;
+    createDoor(door1, 225.0f, 26.0f);
+
+    int frameCounter = 0;
+    SetTargetFPS(60);
+
+    // Boucle principale
+    while (!WindowShouldClose()) {
+        // Gestion des mouvements
+        handleMovement(guard, guardSprite, frameCounter);
+
+        // Dessin
+        BeginDrawing();
+        ClearBackground(BLACK);
+        DrawTexture(corridor1.texture, corridor1.x, corridor1.y, WHITE);
+        DrawTexture(door1.texture, door1.x, door1.y, WHITE);
+        DrawTextureRec(guard.texture, guardSprite, { static_cast<float>(guard.x), static_cast<float>(guard.y) }, WHITE);
+
+        // Debug : Affiche les hitboxes
+        DrawRectangleLinesEx(corridor1.hitboxNorth, 2.0f, RED);
+        DrawRectangleLinesEx(corridor1.hitboxSouth, 2.0f, RED);
+        DrawRectangleLinesEx(guard.hitbox, 2.0f, GREEN);
+        DrawRectangleLinesEx(door1.hitboxNorth, 2.0f, RED);
+        DrawRectangleLinesEx(door1.hitboxDoor, 2.0f, PURPLE);
+        DrawRectangleLinesEx(door1.hitboxSouth, 2.0f, RED);
+
+        EndDrawing();
+    }
+
+    // Libération des ressources
+    UnloadTexture(guard.texture);
+    UnloadTexture(corridor1.texture);
+    UnloadTexture(door1.texture);
+    CloseWindow();
+
+    return 0;
 }
