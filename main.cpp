@@ -1,6 +1,13 @@
 #include <iostream>
 #include <raylib.h>
 #include <vector>
+#include <memory>
+
+// Constantes pour le jeu
+constexpr int SCREEN_WIDTH = 600;
+constexpr int SCREEN_HEIGHT = 400;
+constexpr int FRAME_SPEED = 10; // Vitesse d'animation des sprites
+constexpr float PLAYER_SPEED = 3.0f;
 
 // Structures pour les éléments du jeu
 struct CorridorHorizontal {
@@ -10,9 +17,10 @@ struct CorridorHorizontal {
 };
 
 struct DoorHorizontal {
+    int id;
     float x, y, w, h;
     Texture2D texture;
-    Rectangle hitboxNorth, hitboxDoor, hitboxSouth, sprite;
+    Rectangle hitboxNorth, hitboxDoor, hitboxSouth, hitboxButton, spriteBack, spriteFront;
     bool open;
 };
 
@@ -28,7 +36,7 @@ void createPlayer(Player& player, float x, float y, const char* file_name) {
     player.y = y;
     player.w = 41;
     player.h = 69;
-    player.v = 3;
+    player.v = PLAYER_SPEED;
     player.texture = LoadTexture(file_name);
     player.hitbox = { x + 4.0f, y + 64.0f, 33.0f, 7.0f };
     player.sprite = { 0.0f, 0.0f, player.w, player.h };
@@ -47,7 +55,8 @@ void createHorizontalCorridor(CorridorHorizontal& corridor, float x, float y, st
 }
 
 // Création d'une porte
-void createHorizontalDoor(DoorHorizontal& door, float x, float y, std::vector<Rectangle>& collisionHorizontal) {
+void createHorizontalDoor(DoorHorizontal& door,int id, float x, float y, std::vector<Rectangle>& collisionHorizontal, std::vector<DoorHorizontal>& collisionDoorHorizontal) {
+    door.id = id;
     door.x = x;
     door.y = y;
     door.w = 51;
@@ -56,43 +65,47 @@ void createHorizontalDoor(DoorHorizontal& door, float x, float y, std::vector<Re
     door.hitboxNorth = { x + 17.0f, y + 95.0f, 17.0f, 14.0f };
     door.hitboxSouth = { x + 17.0f, y + 146.0f, 17.0f, 14.0f };
     door.hitboxDoor = { x + 17.0f, y + 109.0f, 17.0f, 37.0f };
-    door.sprite = { 0.0f, 0.0f, door.w, door.h };
-    door.open = 1;
+    door.hitboxButton = { x-10, y + 96.0f, 71.0f, 20.0f };
+    door.spriteBack = { 0.0f, 0.0f, door.w, door.h - 96 };
+    door.spriteFront = { 0.0f, 63.0f, door.w, 96 };
+    door.open = 0;
 
     collisionHorizontal.push_back(door.hitboxNorth);
     collisionHorizontal.push_back(door.hitboxSouth);
+    collisionDoorHorizontal.push_back(door);
 }
 
 void updateSpriteDoor(DoorHorizontal& door) {
-    if (door.open) {
-        door.sprite.x = door.w;
-    } else {
-        door.sprite.x = 0;
-    }
+    door.spriteBack.x = door.open ? door.w : 0;
 }
 
 void interractDoor(DoorHorizontal& door) {
-    if (door.open) {
-        door.open = 0;
-    } else {
-        door.open = 1;
-    }
+    door.open = !door.open;
+    if (door.open)
+        std::cout << "LOG OPEN" << std::endl;
+    if (!door.open)
+        std::cout << "LOG CLOSE" << std::endl;
     updateSpriteDoor(door);
 }
 
 // Mise à jour de l'animation du sprite
 void updateSpriteAnimation(Player& player, int& frameCounter) {
     frameCounter++;
-    int frame = (frameCounter / 10) % 4; // Cycle entre 0 et 3
+    int frame = (frameCounter / FRAME_SPEED) % 4; // Cycle entre 0 et 3
     player.sprite.x = frame * player.w; // Change la colonne
     if (frameCounter >= 40) frameCounter = 0; // Réinitialise après un cycle
 }
 
 // Gestion du mouvement du joueur
-void handleMovement(Player& player, int& frameCounter, std::vector<Rectangle>& collisionHorizontal, std::vector<Rectangle>& collisionVertical) {
+void handleMovement(Player& player, int& frameCounter,
+                    std::vector<Rectangle>& collisionHorizontal,
+                    std::vector<Rectangle>& collisionVertical,
+                    std::vector<DoorHorizontal>& collisionDoorHorizontal) {
+
     bool isMoving = false;
     bool ableToMove = 1;
     int i = 0;
+    int pi = 0;
 
     // Déplacement à droite
     if (IsKeyDown(KEY_D) || IsKeyDown(KEY_RIGHT)) {
@@ -103,14 +116,21 @@ void handleMovement(Player& player, int& frameCounter, std::vector<Rectangle>& c
             }
             i++;
         }
+        while(pi < collisionDoorHorizontal.size() && ableToMove) {
+            if(CheckCollisionRecs(player.hitbox, collisionDoorHorizontal[pi].hitboxDoor) && !collisionDoorHorizontal[pi].open) {
+                ableToMove = 0;
+            }
+            pi++;
+        }
         if (ableToMove) {
             player.x += player.v;
-            player.sprite.y = 0; // Ligne pour "droite"
+            player.sprite.y = 0;
             isMoving = true;
         } else {
             player.hitbox.x -= player.v;
         }
-        
+        int i = 0;
+        int pi = 0;
     }
     // Déplacement à gauche
     if (IsKeyDown(KEY_A) || IsKeyDown(KEY_LEFT)) {
@@ -121,13 +141,21 @@ void handleMovement(Player& player, int& frameCounter, std::vector<Rectangle>& c
             }
             i++;
         }
+        while(pi < collisionDoorHorizontal.size() && ableToMove) {
+            if(CheckCollisionRecs(player.hitbox, collisionDoorHorizontal[pi].hitboxDoor) && !collisionDoorHorizontal[pi].open) {
+                ableToMove = 0;
+            }
+            pi++;
+        }
         if (ableToMove) {
             player.x -= player.v;
-            player.sprite.y = player.h; // Ligne pour "gauche"
+            player.sprite.y = player.h;
             isMoving = true;
         } else {
             player.hitbox.x += player.v;
         }
+        int i = 0;
+        int pi = 0;
     }
     // Déplacement vers le haut
     if (IsKeyDown(KEY_W) || IsKeyDown(KEY_UP)) {
@@ -140,11 +168,13 @@ void handleMovement(Player& player, int& frameCounter, std::vector<Rectangle>& c
         }
         if (ableToMove) {
             player.y -= player.v;
-            player.sprite.y = player.h * 2; // Ligne pour "haut"
+            player.sprite.y = player.h * 2;
             isMoving = true;
         } else {
             player.hitbox.y += player.v;
         }
+        int i = 0;
+        int pi = 0;
     }
     // Déplacement vers le bas
     if (IsKeyDown(KEY_S) || IsKeyDown(KEY_DOWN)) {
@@ -157,11 +187,13 @@ void handleMovement(Player& player, int& frameCounter, std::vector<Rectangle>& c
         }
         if (ableToMove) {
             player.y += player.v;
-            player.sprite.y = player.h * 3; // Ligne pour "bas"
+            player.sprite.y = player.h * 3;
             isMoving = true;
         } else {
             player.hitbox.y -= player.v;
         }
+        int i = 0;
+        int pi = 0;
     }
 
     // Animation du sprite
@@ -184,6 +216,8 @@ int main() {
     //Vectors of collision
     std::vector<Rectangle> collisionVertical;
     std::vector<Rectangle> collisionHorizontal;
+    std::vector<DoorHorizontal> collisionDoorHorizontal;
+
 
     // Initialisation du corridor et de la porte
     CorridorHorizontal corridor1;
@@ -191,7 +225,8 @@ int main() {
     CorridorHorizontal corridor2;
     createHorizontalCorridor(corridor2, 498.0f, 10.0f, collisionVertical);
     DoorHorizontal door1;
-    createHorizontalDoor(door1, 225.0f, 26.0f, collisionHorizontal);
+    createHorizontalDoor(door1, 1, 225.0f, 26.0f, collisionHorizontal, collisionDoorHorizontal);
+    createHorizontalDoor(door1, 2, 22.0f, 26.0f, collisionHorizontal, collisionDoorHorizontal);
 
     int frameCounter = 0;
     SetTargetFPS(60);
@@ -199,27 +234,28 @@ int main() {
     // Boucle principale
     while (!WindowShouldClose()) {
         // Gestion des mouvements
-        handleMovement(guard, frameCounter, collisionHorizontal, collisionVertical);
+        handleMovement(guard, frameCounter, collisionHorizontal, collisionVertical, collisionDoorHorizontal);
         if (IsKeyPressed(KEY_E)) {
-            interractDoor(door1);
+            for (DoorHorizontal& door : collisionDoorHorizontal)
+                if (CheckCollisionRecs(guard.hitbox, door.hitboxButton))
+                    interractDoor(door);
         }
         
-
         // Dessin
         BeginDrawing();
         ClearBackground(BLACK);
         DrawTexture(corridor1.texture, corridor1.x, corridor1.y, WHITE);
         DrawTexture(corridor2.texture, corridor2.x, corridor2.y, WHITE);
-        DrawTextureRec(door1.texture, door1.sprite, {door1.x, door1.y}, WHITE);
-        DrawTextureRec(guard.texture, guard.sprite, { static_cast<float>(guard.x), static_cast<float>(guard.y) }, WHITE);
+        for (DoorHorizontal door : collisionDoorHorizontal) {
+            DrawTextureRec(door.texture, door.spriteBack, {door.x, door.y}, WHITE);
+        }
+        DrawTextureRec(guard.texture, guard.sprite, {guard.x, guard.y}, WHITE);
+        for (DoorHorizontal door : collisionDoorHorizontal) {
+            DrawTextureRec(door.texture, door.spriteFront, {door.x, door.y+63}, WHITE);
+        }
 
-        // Debug : Affiche les hitboxes
-        DrawRectangleLinesEx(corridor1.hitboxNorth, 2.0f, RED);
-        DrawRectangleLinesEx(corridor1.hitboxSouth, 2.0f, RED);
-        DrawRectangleLinesEx(guard.hitbox, 2.0f, GREEN);
-        DrawRectangleLinesEx(door1.hitboxNorth, 2.0f, RED);
-        DrawRectangleLinesEx(door1.hitboxDoor, 2.0f, PURPLE);
-        DrawRectangleLinesEx(door1.hitboxSouth, 2.0f, RED);
+        //Debug : Hitboxs
+        //DrawRectangleLinesEx(collisionDoorHorizontal[0].hitboxButton, 2.0f, GREEN);
 
         EndDrawing();
     }
@@ -229,6 +265,9 @@ int main() {
     UnloadTexture(corridor1.texture);
     UnloadTexture(corridor2.texture);
     UnloadTexture(door1.texture);
+    for (DoorHorizontal door: collisionDoorHorizontal) {
+        UnloadTexture(door.texture);
+    }
     CloseWindow();
 
     return 0;
