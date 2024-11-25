@@ -1,22 +1,23 @@
 #include <iostream>
 #include <raylib.h>
+#include <vector>
 
 // Structures pour les éléments du jeu
 struct CorridorHorizontal {
-    int x, y;
+    float x, y;
     Texture2D texture;
     Rectangle hitboxNorth, hitboxSouth;
 };
 
 struct DoorHorizontal {
-    int x, y, w, h;
+    float x, y, w, h;
     Texture2D texture;
     Rectangle hitboxNorth, hitboxDoor, hitboxSouth, sprite;
     bool open;
 };
 
 struct Player {
-    int x, y, w, h, v;
+    float x, y, w, h, v;
     Texture2D texture;
     Rectangle hitbox, sprite;
 };
@@ -34,16 +35,19 @@ void createPlayer(Player& player, float x, float y, const char* file_name) {
 }
 
 // Création d'un corridor
-void createCorridor(CorridorHorizontal& corridor, float x, float y) {
+void createHorizontalCorridor(CorridorHorizontal& corridor, float x, float y, std::vector<Rectangle>& collisionVertical) {
     corridor.x = x;
     corridor.y = y;
     corridor.texture = LoadTexture("./assets/SCP_Corridor.png");
     corridor.hitboxNorth = { x, y + 104.0f, 500.0f, 10.0f };
     corridor.hitboxSouth = { x, y + 172.0f, 500.0f, 10.0f };
+
+    collisionVertical.push_back(corridor.hitboxNorth);
+    collisionVertical.push_back(corridor.hitboxSouth);
 }
 
 // Création d'une porte
-void createDoor(DoorHorizontal& door, float x, float y) {
+void createHorizontalDoor(DoorHorizontal& door, float x, float y, std::vector<Rectangle>& collisionHorizontal) {
     door.x = x;
     door.y = y;
     door.w = 51;
@@ -54,6 +58,9 @@ void createDoor(DoorHorizontal& door, float x, float y) {
     door.hitboxDoor = { x + 17.0f, y + 109.0f, 17.0f, 37.0f };
     door.sprite = { 0.0f, 0.0f, door.w, door.h };
     door.open = 1;
+
+    collisionHorizontal.push_back(door.hitboxNorth);
+    collisionHorizontal.push_back(door.hitboxSouth);
 }
 
 void updateSpriteDoor(DoorHorizontal& door) {
@@ -82,36 +89,79 @@ void updateSpriteAnimation(Player& player, int& frameCounter) {
 }
 
 // Gestion du mouvement du joueur
-void handleMovement(Player& player, int& frameCounter) {
+void handleMovement(Player& player, int& frameCounter, std::vector<Rectangle>& collisionHorizontal, std::vector<Rectangle>& collisionVertical) {
     bool isMoving = false;
+    bool ableToMove = 1;
+    int i = 0;
 
     // Déplacement à droite
     if (IsKeyDown(KEY_D) || IsKeyDown(KEY_RIGHT)) {
-        player.x += player.v;
         player.hitbox.x += player.v;
-        player.sprite.y = 0; // Ligne pour "droite"
-        isMoving = true;
+        while(i < collisionHorizontal.size() && ableToMove) {
+            if(CheckCollisionRecs(player.hitbox, collisionHorizontal[i])) {
+                ableToMove = 0;
+            }
+            i++;
+        }
+        if (ableToMove) {
+            player.x += player.v;
+            player.sprite.y = 0; // Ligne pour "droite"
+            isMoving = true;
+        } else {
+            player.hitbox.x -= player.v;
+        }
+        
     }
     // Déplacement à gauche
     if (IsKeyDown(KEY_A) || IsKeyDown(KEY_LEFT)) {
-        player.x -= player.v;
         player.hitbox.x -= player.v;
-        player.sprite.y = player.h; // Ligne pour "gauche"
-        isMoving = true;
+        while(i < collisionHorizontal.size() && ableToMove) {
+            if(CheckCollisionRecs(player.hitbox, collisionHorizontal[i])) {
+                ableToMove = 0;
+            }
+            i++;
+        }
+        if (ableToMove) {
+            player.x -= player.v;
+            player.sprite.y = player.h; // Ligne pour "gauche"
+            isMoving = true;
+        } else {
+            player.hitbox.x += player.v;
+        }
     }
     // Déplacement vers le haut
     if (IsKeyDown(KEY_W) || IsKeyDown(KEY_UP)) {
-        player.y -= player.v;
         player.hitbox.y -= player.v;
-        player.sprite.y = player.h * 2; // Ligne pour "haut"
-        isMoving = true;
+        while(i < collisionVertical.size() && ableToMove) {
+            if(CheckCollisionRecs(player.hitbox, collisionVertical[i])) {
+                ableToMove = 0;
+            }
+            i++;
+        }
+        if (ableToMove) {
+            player.y -= player.v;
+            player.sprite.y = player.h * 2; // Ligne pour "haut"
+            isMoving = true;
+        } else {
+            player.hitbox.y += player.v;
+        }
     }
     // Déplacement vers le bas
     if (IsKeyDown(KEY_S) || IsKeyDown(KEY_DOWN)) {
-        player.y += player.v;
         player.hitbox.y += player.v;
-        player.sprite.y = player.h * 3; // Ligne pour "bas"
-        isMoving = true;
+        while(i < collisionVertical.size() && ableToMove) {
+            if(CheckCollisionRecs(player.hitbox, collisionVertical[i])) {
+                ableToMove = 0;
+            }
+            i++;
+        }
+        if (ableToMove) {
+            player.y += player.v;
+            player.sprite.y = player.h * 3; // Ligne pour "bas"
+            isMoving = true;
+        } else {
+            player.hitbox.y -= player.v;
+        }
     }
 
     // Animation du sprite
@@ -131,13 +181,17 @@ int main() {
     Player guard;
     createPlayer(guard, 150.0f, 100.0f, "./assets/SCP_Default_Walking.png");
 
+    //Vectors of collision
+    std::vector<Rectangle> collisionVertical;
+    std::vector<Rectangle> collisionHorizontal;
+
     // Initialisation du corridor et de la porte
     CorridorHorizontal corridor1;
-    createCorridor(corridor1, 0.0f, 10.0f);
+    createHorizontalCorridor(corridor1, 0.0f, 10.0f, collisionVertical);
     CorridorHorizontal corridor2;
-    createCorridor(corridor2, 498.0f, 10.0f);
+    createHorizontalCorridor(corridor2, 498.0f, 10.0f, collisionVertical);
     DoorHorizontal door1;
-    createDoor(door1, 225.0f, 26.0f);
+    createHorizontalDoor(door1, 225.0f, 26.0f, collisionHorizontal);
 
     int frameCounter = 0;
     SetTargetFPS(60);
@@ -145,7 +199,7 @@ int main() {
     // Boucle principale
     while (!WindowShouldClose()) {
         // Gestion des mouvements
-        handleMovement(guard, frameCounter);
+        handleMovement(guard, frameCounter, collisionHorizontal, collisionVertical);
         if (IsKeyPressed(KEY_E)) {
             interractDoor(door1);
         }
