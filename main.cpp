@@ -4,10 +4,10 @@
 #include <memory>
 
 // Constantes pour le jeu
-constexpr int SCREEN_WIDTH = 600;
-constexpr int SCREEN_HEIGHT = 400;
-constexpr int FRAME_SPEED = 10; // Vitesse d'animation des sprites
-constexpr float PLAYER_SPEED = 3.0f;
+const int SCREEN_WIDTH = GetScreenWidth();
+const int SCREEN_HEIGHT = GetScreenHeight();
+const int FRAME_SPEED = 10; // Vitesse d'animation des sprites
+const float PLAYER_SPEED = 2.0f;
 
 // Structures pour les éléments du jeu
 struct CorridorHorizontal {
@@ -96,104 +96,93 @@ void updateSpriteAnimation(Player& player, int& frameCounter) {
     if (frameCounter >= 40) frameCounter = 0; // Réinitialise après un cycle
 }
 
-// Gestion du mouvement du joueur
 void handleMovement(Player& player, int& frameCounter,
                     std::vector<Rectangle>& collisionHorizontal,
                     std::vector<Rectangle>& collisionVertical,
                     std::vector<DoorHorizontal>& collisionDoorHorizontal) {
 
     bool isMoving = false;
-    bool ableToMove = 1;
-    int i = 0;
-    int pi = 0;
 
-    // Déplacement à droite
+    // Variables pour détecter les collisions
+    bool ableToMoveHorizontal = true;
+    bool ableToMoveVertical = true;
+
+    // Gestion du mouvement horizontal
     if (IsKeyDown(KEY_D) || IsKeyDown(KEY_RIGHT)) {
         player.hitbox.x += player.v;
-        while(i < collisionHorizontal.size() && ableToMove) {
-            if(CheckCollisionRecs(player.hitbox, collisionHorizontal[i])) {
-                ableToMove = 0;
+        for (const auto& rect : collisionHorizontal) {
+            if (CheckCollisionRecs(player.hitbox, rect)) {
+                ableToMoveHorizontal = false;
+                break;
             }
-            i++;
         }
-        while(pi < collisionDoorHorizontal.size() && ableToMove) {
-            if(CheckCollisionRecs(player.hitbox, collisionDoorHorizontal[pi].hitboxDoor) && !collisionDoorHorizontal[pi].open) {
-                ableToMove = 0;
+        for (const auto& door : collisionDoorHorizontal) {
+            if (CheckCollisionRecs(player.hitbox, door.hitboxDoor) && !door.open) {
+                ableToMoveHorizontal = false;
+                break;
             }
-            pi++;
         }
-        if (ableToMove) {
+        if (ableToMoveHorizontal) {
             player.x += player.v;
             player.sprite.y = 0;
             isMoving = true;
         } else {
             player.hitbox.x -= player.v;
         }
-        int i = 0;
-        int pi = 0;
-    }
-    // Déplacement à gauche
-    if (IsKeyDown(KEY_A) || IsKeyDown(KEY_LEFT)) {
+    } else if (IsKeyDown(KEY_A) || IsKeyDown(KEY_LEFT)) {
         player.hitbox.x -= player.v;
-        while(i < collisionHorizontal.size() && ableToMove) {
-            if(CheckCollisionRecs(player.hitbox, collisionHorizontal[i])) {
-                ableToMove = 0;
+        for (const auto& rect : collisionHorizontal) {
+            if (CheckCollisionRecs(player.hitbox, rect)) {
+                ableToMoveHorizontal = false;
+                break;
             }
-            i++;
         }
-        while(pi < collisionDoorHorizontal.size() && ableToMove) {
-            if(CheckCollisionRecs(player.hitbox, collisionDoorHorizontal[pi].hitboxDoor) && !collisionDoorHorizontal[pi].open) {
-                ableToMove = 0;
+        for (const auto& door : collisionDoorHorizontal) {
+            if (CheckCollisionRecs(player.hitbox, door.hitboxDoor) && !door.open) {
+                ableToMoveHorizontal = false;
+                break;
             }
-            pi++;
         }
-        if (ableToMove) {
+        if (ableToMoveHorizontal) {
             player.x -= player.v;
             player.sprite.y = player.h;
             isMoving = true;
         } else {
             player.hitbox.x += player.v;
         }
-        int i = 0;
-        int pi = 0;
     }
-    // Déplacement vers le haut
+
+    // Gestion du mouvement vertical
     if (IsKeyDown(KEY_W) || IsKeyDown(KEY_UP)) {
         player.hitbox.y -= player.v;
-        while(i < collisionVertical.size() && ableToMove) {
-            if(CheckCollisionRecs(player.hitbox, collisionVertical[i])) {
-                ableToMove = 0;
+        for (const auto& rect : collisionVertical) {
+            if (CheckCollisionRecs(player.hitbox, rect)) {
+                ableToMoveVertical = false;
+                break;
             }
-            i++;
         }
-        if (ableToMove) {
+        if (ableToMoveVertical) {
             player.y -= player.v;
             player.sprite.y = player.h * 2;
             isMoving = true;
         } else {
             player.hitbox.y += player.v;
         }
-        int i = 0;
-        int pi = 0;
-    }
-    // Déplacement vers le bas
-    if (IsKeyDown(KEY_S) || IsKeyDown(KEY_DOWN)) {
+    } else if (IsKeyDown(KEY_S) || IsKeyDown(KEY_DOWN)) {
         player.hitbox.y += player.v;
-        while(i < collisionVertical.size() && ableToMove) {
-            if(CheckCollisionRecs(player.hitbox, collisionVertical[i])) {
-                ableToMove = 0;
+        for (const auto& rect : collisionVertical) {
+            if (CheckCollisionRecs(player.hitbox, rect)) {
+                ableToMoveVertical = false;
+                break;
             }
-            i++;
         }
-        if (ableToMove) {
+        if (ableToMoveVertical) {
             player.y += player.v;
             player.sprite.y = player.h * 3;
             isMoving = true;
         } else {
             player.hitbox.y -= player.v;
         }
-        int i = 0;
-        int pi = 0;
     }
 
     // Animation du sprite
@@ -201,17 +190,20 @@ void handleMovement(Player& player, int& frameCounter,
         updateSpriteAnimation(player, frameCounter);
     } else {
         frameCounter = 0; // Réinitialise l'animation si immobile
-    	updateSpriteAnimation(player, frameCounter);
+        updateSpriteAnimation(player, frameCounter);
     }
 }
 
+
 // Fonction principale
 int main() {
-    InitWindow(600, 400, "SCP : Secure Contain Protect");
-
+    InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "SCP : Secure Contain Protect");
+    const int SCREEN_WIDTH = GetScreenWidth();
+    const int SCREEN_HEIGHT = GetScreenHeight();
+    std::cout << "KAKA" << SCREEN_WIDTH << std::endl;
     // Initialisation du joueur
     Player guard;
-    createPlayer(guard, 150.0f, 100.0f, "./assets/SCP_Default_Walking.png");
+    createPlayer(guard, 150.0f, 100.0f, "./assets/SCP_049.png");
 
     //Vectors of collision
     std::vector<Rectangle> collisionVertical;
@@ -228,6 +220,14 @@ int main() {
     createHorizontalDoor(door1, 1, 225.0f, 26.0f, collisionHorizontal, collisionDoorHorizontal);
     createHorizontalDoor(door1, 2, 22.0f, 26.0f, collisionHorizontal, collisionDoorHorizontal);
 
+    std::cout << "KAKA" << SCREEN_WIDTH << " "<< SCREEN_HEIGHT<<std::endl;
+
+    Camera2D camera = { 0 };
+    camera.target = { guard.x + guard.w / 2, guard.y + guard.h / 2 }; // Le joueur est au centre
+    camera.offset = { SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2 };    // Décalage pour centrer
+    camera.rotation = 0.0f;
+    camera.zoom = 1.0f;
+
     int frameCounter = 0;
     SetTargetFPS(60);
 
@@ -235,15 +235,17 @@ int main() {
     while (!WindowShouldClose()) {
         // Gestion des mouvements
         handleMovement(guard, frameCounter, collisionHorizontal, collisionVertical, collisionDoorHorizontal);
+        camera.target = { guard.x + guard.w / 2, guard.y + guard.h / 2 };
         if (IsKeyPressed(KEY_E)) {
             for (DoorHorizontal& door : collisionDoorHorizontal)
                 if (CheckCollisionRecs(guard.hitbox, door.hitboxButton))
                     interractDoor(door);
         }
-        
         // Dessin
         BeginDrawing();
         ClearBackground(BLACK);
+        BeginMode2D(camera);
+
         DrawTexture(corridor1.texture, corridor1.x, corridor1.y, WHITE);
         DrawTexture(corridor2.texture, corridor2.x, corridor2.y, WHITE);
         for (DoorHorizontal door : collisionDoorHorizontal) {
@@ -256,7 +258,7 @@ int main() {
 
         //Debug : Hitboxs
         //DrawRectangleLinesEx(collisionDoorHorizontal[0].hitboxButton, 2.0f, GREEN);
-
+        EndMode2D();
         EndDrawing();
     }
 
