@@ -153,7 +153,7 @@ void trackMouse(std::vector<Rectangle> buttons, bool& shouldClose) {
 
 // Fonction principale
 int main() {
-    InitWindow(500, 500, "SCP : Secure Contain Protect");
+    InitWindow(300, 233, "SCP : Secure Contain Protect");
     const int SCREEN_WIDTH = GetScreenWidth();
     const int SCREEN_HEIGHT = GetScreenHeight();
     // Initialisation du joueur
@@ -161,6 +161,8 @@ int main() {
     InitAudioDevice();
     Music main_music = LoadMusicStream("musics/main.mp3");
     PlayMusicStream(main_music);
+
+    Font fontTtf = LoadFontEx("fonts/pixeloid_sans/PixeloidSans.ttf", 32, 0, 250);
 
     Player player;
     createPlayer(player, 250.0f, 150.0f, "./assets/SCP_GuardNoHelmet_Walking.png");
@@ -206,13 +208,16 @@ int main() {
         BeginDrawing();
         ClearBackground(BLACK);
 
+
         DrawTextureRec(fond, {0.0f, 0.0f, 300.0f, 173.0f}, {0.0f, 0.0f}, WHITE);
         DrawTextureRec(scp_049.texture, scp_049.sprite, {scp_049.x, scp_049.y}, WHITE);
         DrawTextureRec(guard1.texture, guard1.sprite, {guard1.x, guard1.y}, WHITE);
         DrawTextureRec(guard2.texture, guard2.sprite, {guard2.x, guard2.y}, WHITE);
         DrawTextureRec(fond, {0.0f, 174.0f, 300.0f, 133.0f}, {0.0f, 100.0f}, WHITE);        
         DrawTextureRec(player.texture, player.sprite, {player.x, player.y}, WHITE);
-        DrawTexture(buttons_texture, 13.0f, 134.0f, WHITE);
+        //DrawTexture(buttons_texture, 13.0f, 134.0f, WHITE);
+        
+        //DrawTextEx(fontTtf, "SCP: Security Guard", (Vector2){ 20.0f, 20.0f }, (float)fontTtf.baseSize, 2, WHITE);
         EndDrawing();
     }
 
