@@ -2,7 +2,7 @@
 #include <raylib.h>
 #include <vector>
 
-// Constantes pour le jeu
+// Constantes pour le jeu zqesrdhtj
 const int FRAME_SPEED = 10; // Vitesse d'animation des sprites
 const float PLAYER_SPEED = 1.3f;
 
